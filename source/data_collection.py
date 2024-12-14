@@ -1,4 +1,6 @@
 import requests
+import time
+import concurrent.futures
 from typing import Any, Dict
 
 from pdf_converter import write_to_pdf
@@ -56,13 +58,23 @@ class DataCollection:
         return " ".join(details_list)
 
     def start_process(self, drug_id_start, drug_id_limit) -> None:
-        for drug_id in range(drug_id_start, drug_id_limit + 1):
-            print(f"Processing drug ID: {drug_id}")
-            drug_data = self.drug_download(drug_id)
-            if drug_data:
-                self.data_preprocessing(drug_data)
+        start_time = time.perf_counter()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            drug_ids = range(drug_id_start, drug_id_limit + 1)
+            # Use map to download and process data in parallel
+            results = executor.map(self.drug_download, drug_ids)
+
+            count = drug_id_start
+            for drug_data in results:
+                if drug_data:
+                    count += 1
+                    self.data_preprocessing(drug_data)
+                    print(f"Processed drug ID count: {count}")
+
+        end_time = time.perf_counter()
+        print("Total time: ", end_time - start_time)
 
 
 if __name__ == "__main__":
     obj = DataCollection()
-    obj.start_process(drug_id_start=1, drug_id_limit=10)
+    obj.start_process(drug_id_start=201, drug_id_limit=500)
