@@ -1,10 +1,12 @@
 import requests
 from typing import Any, Dict
 
+from pdf_converter import write_to_pdf
+
 
 class DataCollection:
     def __init__(self):
-        self.preprocessed_results = []
+        self.output = ""
 
     def drug_download(self, drug_id: int) -> Dict[str, Any]:
         """Fetch drug information from the PubChem API."""
@@ -42,7 +44,7 @@ class DataCollection:
                     drug_details["Details"][heading] = extracted_info
         
         if "Drug and Medication Information" in drug_details["Details"]:
-            self.preprocessed_results.append(drug_details)
+            write_to_pdf(drug_details, record_title)
 
     def _extract_information(self, section: Dict[str, Any]) -> str:
         details_list = []
@@ -59,10 +61,6 @@ class DataCollection:
             drug_data = self.drug_download(drug_id)
             if drug_data:
                 self.data_preprocessing(drug_data)
-
-        print("Data collection completed. Processed results:")
-        for result in self.preprocessed_results:
-            print(result)
 
 
 if __name__ == "__main__":
