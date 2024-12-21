@@ -1,5 +1,5 @@
-import requests
 import time
+import requests
 import concurrent.futures
 from typing import Any, Dict
 
@@ -59,20 +59,27 @@ class DataCollection:
 
     def start_process(self, drug_id_start, drug_id_limit) -> None:
         start_time = time.perf_counter()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            drug_ids = range(drug_id_start, drug_id_limit + 1)
-            # Use map to download and process data in parallel
-            results = executor.map(self.drug_download, drug_ids)
+        drug_ids = range(drug_id_start, drug_id_limit + 1)
 
-            count = drug_id_start
-            for drug_data in results:
-                if drug_data:
-                    count += 1
-                    self.data_preprocessing(drug_data)
-                    print(f"Processed drug ID count: {count}")
+        batch_size = 100
+        batches = [drug_ids[i:i + batch_size] for i in range(0, len(drug_ids), batch_size)]
+
+        for batch_num, batch in enumerate(batches, start=1):
+            print(f"Processing batch {batch_num}...")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                results = executor.map(self.drug_download, batch)
+
+                for drug_data in results:
+                    if drug_data:
+                        self.data_preprocessing(drug_data)
+
+            if batch_num < len(batches):  
+                print(f"Batch {batch_num} completed. Pausing for 1 minute...")
+                time.sleep(60)
 
         end_time = time.perf_counter()
         print("Total time: ", end_time - start_time)
+
 
 
 if __name__ == "__main__":
