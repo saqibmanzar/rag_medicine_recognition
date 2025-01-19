@@ -5,6 +5,11 @@ import pdb
 import concurrent.futures
 from typing import Any, Dict, List, Optional
 from datetime import datetime
+
+from drug_classifier import connect_to_snowflake, classify_medicine
+
+from transformers import GPT2TokenizerFast
+
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from snowflake.connector import connect
@@ -25,11 +30,16 @@ class DataCollection:
         self.session = requests.Session()  # Reuse HTTP connection
         self.toc_heading = ["Names and Identifiers", "Drug and Medication Information"]
         self.create_table()
+        self.tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+
+
+    def token_length(self, text):
+        return len(self.tokenizer.encode(text))
 
     def connect_to_snowflake(self):
         """Establish a connection to Snowflake with retry logic."""
         max_retries = 3
-        retry_delay = 5  # seconds
+        retry_delay = 5  
 
         for attempt in range(max_retries):
             try:
@@ -60,6 +70,7 @@ class DataCollection:
                 record_title VARCHAR(500),
                 heading VARCHAR(100),
                 chunk VARCHAR(16777216),
+                category VARCHAR(100),
                 created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
                 PRIMARY KEY (id)
             )
@@ -88,14 +99,15 @@ class DataCollection:
                         record_title = mapp.get('title')  # Use actual record title if available
                         heading = mapp.get('heading')
                         chunk = mapp.get('chunk')
+                        category = mapp.get('category')
 
-                        if heading and chunk and record_title:
-                            values.append((record_title, heading, chunk))
+                        if heading and chunk and record_title and category:
+                            values.append((record_title, heading, chunk, category))
 
             # Insert the data into Snowflake
             sql = """
-            INSERT INTO drug_data (record_title, heading, chunk)
-            VALUES (%s, %s, %s)
+            INSERT INTO drug_data (record_title, heading, chunk, category)
+            VALUES (%s, %s, %s, %s)
             """
             cursor.executemany(sql, values)
             self.connection.commit()
@@ -153,6 +165,7 @@ class DataCollection:
         
         if "Drug and Medication Information" in details:
             # Apply chunking to the details text here
+            # pdb.set_trace()
             chunked_details = self.apply_chunking(details)
             return chunked_details
         return None
@@ -160,24 +173,33 @@ class DataCollection:
     def apply_chunking(self, details: Dict[str, str]) -> List[Dict[str, Any]]:
         """Apply chunking to the extracted details."""
         chunked_data = []
+        session = connect_to_snowflake()
         for heading, text in details.items():
             # Apply the text_chunker (chunking function)
             chunks = self.split_text(text[1])  
-            for chunk in chunks:
-                chunked_data.append({
-                    "title": text[0],
-                    "heading": heading,
-                    "chunk": chunk
-                })
+
+            category = classify_medicine(session, text[0])
+            if category == 'None' or category == 'N/A':
+                continue
+            else:
+                for chunk in chunks:
+                    chunked_data.append({
+                        "title": text[0],
+                        "heading": heading,
+                        "chunk": chunk,
+                        "category": category
+                    })
+
+        session.close()
         return chunked_data
     
     def split_text(self, text: str) -> List[str]:
         """Split text using the Langchain chunking logic."""
-        # Call the Langchain text chunking method here (recursive character splitter)
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1512,  # Adjust as needed
-            chunk_overlap=256,
-            length_function=len
+            chunk_size=500, 
+            chunk_overlap=50,
+            length_function=self.token_length,
+            is_separator_regex=False
         )
         chunks = text_splitter.split_text(text)
         return chunks
@@ -226,8 +248,8 @@ class DataCollection:
                     self.bulk_insert_into_snowflake(processed_drugs)
 
                 if batch_num < total_batches:
-                    print(f"Batch {batch_num} completed. Pausing for 1 minute...")
-                    time.sleep(60)
+                    print(f"Batch {batch_num} completed. Pausing for 5 sec...")
+                    time.sleep(5)
 
         except KeyboardInterrupt:
             print("\nProcess interrupted by user. Cleaning up...")
@@ -240,4 +262,4 @@ class DataCollection:
 
 if __name__ == "__main__":
     obj = DataCollection()
-    obj.start_process(drug_id_start=1, drug_id_limit=50)
+    obj.start_process(drug_id_start=1, drug_id_limit=500)
