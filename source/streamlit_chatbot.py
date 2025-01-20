@@ -3,12 +3,14 @@ import streamlit as st
 import os
 from snowflake.core import Root
 import pandas as pd
+import pdb
 from dotenv import load_dotenv
 
 load_dotenv()
 pd.set_option("max_colwidth", None)
 
 NUM_CHUNKS = 3  
+slide_window = 7
 
 SNOWFLAKE_USER = os.getenv('SNOWFLAKE_USER')
 SNOWFLAKE_PASSWORD = os.getenv('SNOWFLAKE_PASSWORD')
@@ -46,16 +48,21 @@ COLUMNS = [
     "record_title"
 ]
 
+def init_messages():
+    if st.session_state.clear_conversation or "messages" not in st.session_state:
+        st.session_state.messages = []
+
 def config_options():
-    st.sidebar.selectbox('Select your model:', (
-        'mixtral-8x7b', 'snowflake-arctic', 'mistral-large',
-        'llama3-8b', 'llama3-70b', 'reka-flash', 
-        'mistral-7b', 'llama2-70b-chat', 'gemma-7b'), key="model_name")
+    st.sidebar.selectbox('Select your model:', ('mixtral-8x7b', 'snowflake-arctic', 'mistral-large2', 'mistral-7b', 'mistral-large'), key="model_name")
 
     categories = session.sql("SELECT DISTINCT category FROM drug_data").collect()
     cat_list = ['ALL'] + [cat.CATEGORY for cat in categories]
 
     st.sidebar.selectbox('Select the drug category:', cat_list, key="category_value")
+    st.sidebar.checkbox('Do you want that I remember the chat history?', key="use_chat_history", value = True)
+    st.sidebar.checkbox('Debug: Click to see summary generated of previous conversation', key="debug", value = True)
+    st.sidebar.button("Start Over", key="clear_conversation", on_click=init_messages)
+    st.sidebar.expander("Session State").write(st.session_state)
 
 def get_similar_chunks_search_service(query):
     if st.session_state.category_value == "ALL":
@@ -69,46 +76,88 @@ def get_similar_chunks_search_service(query):
 
     return response.json()
 
-def create_prompt(myquestion):
-    if "history" not in st.session_state:
-        st.session_state.history = []  
+def get_chat_history():
+    chat_history = []
+    
+    start_index = max(0, len(st.session_state.messages) - slide_window)
+    for i in range (start_index , len(st.session_state.messages) -1):
+         chat_history.append(st.session_state.messages[i])
 
-    slide_window = 7
+    return chat_history
 
-    history_context = "\n".join(
-        [f"User: {entry['question']}\nAssistant: {entry['response']}" for entry in st.session_state.history[-slide_window:]]
-    )
+def summarize_question_with_history(chat_history, question):
+# To get the right context, use the LLM to first summarize the previous conversation
+# This will be used to get embeddings and find similar chunks in the docs for context
 
-    if st.session_state.rag:
-        prompt_context = get_similar_chunks_search_service(myquestion)
-        prompt = f"""
-            You are an expert chat assistant that extracts information from the context provided
-            between <context> and </context> tags.
-            When answering the question contained between <question> and </question> tags,
-            be concise and do not hallucinate. If you don't have the information, just say so.
-            Only answer the question if you can extract it from the context provided.
-
-            <history>
-            {history_context}
-            </history>
-
-            <context>          
-            {prompt_context}
-            </context>
-            <question>  
-            {myquestion}
-            </question>
-            Answer: 
+    prompt = f"""
+        Based on the chat history below and the question, generate a query that extend the question
+        with the chat history provided. The query should be in natual language. 
+        Answer with only the query. Do not add any explanation.
+        
+        <chat_history>
+        {chat_history}
+        </chat_history>
+        <question>
+        {question}
+        </question>
         """
+    
+    query = session.sql(f"""
+        SELECT TRIM(SNOWFLAKE.CORTEX.COMPLETE(
+            $${st.session_state.model_name}$$,
+            $${prompt}$$
+        ), '\\n') AS summary
+    """)
+    result = query.collect()
+
+    if result:
+        summary = result[0]["SUMMARY"]
+        if st.session_state.debug:
+            st.sidebar.text("Summary to be used to find similar chunks in the docs:")
+            st.sidebar.caption(summary)
+        return summary
     else:
-        prompt = f"""
-            [Conversation History]
-            {history_context}
+        return "Unable to generate summary"
 
-            Question:  
-            {myquestion} 
-            Answer:
-        """
+
+def create_prompt(myquestion):
+    if st.session_state.use_chat_history:
+        chat_history = get_chat_history()
+
+        if chat_history != []: 
+                question_summary = summarize_question_with_history(chat_history, myquestion)
+                prompt_context =  get_similar_chunks_search_service(question_summary)
+        else:
+            prompt_context = get_similar_chunks_search_service(myquestion) 
+    else:
+        prompt_context = get_similar_chunks_search_service(myquestion)
+        chat_history = ""
+        
+    prompt = f"""
+           You are an expert chat assistance that extracs information from the CONTEXT provided
+           between <context> and </context> tags.
+           You offer a chat experience considering the information included in the CHAT HISTORY
+           provided between <chat_history> and </chat_history> tags..
+           When ansering the question contained between <question> and </question> tags
+           be concise and do not hallucinate. 
+           If you don´t have the information just say so.
+           
+           Do not mention the CONTEXT used in your answer.
+           Do not mention the CHAT HISTORY used in your asnwer.
+
+           Only anwer the question if you can extract it from the CONTEXT provideed.
+           
+           <chat_history>
+           {chat_history}
+           </chat_history>
+           <context>          
+           {prompt_context}
+           </context>
+           <question>  
+           {myquestion}
+           </question>
+           Answer: 
+           """
     return prompt
 
 
@@ -123,30 +172,29 @@ def complete(myquestion):
 def main():
     st.title(":speech_balloon: MediScope Chatbot")
     config_options()
-    st.session_state.rag = st.sidebar.checkbox('Use your own dataset as context?')
+    init_messages()
+    
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-    for msg in st.session_state.messages:
-        if msg["role"] == "user":
-            with st.chat_message("user"):
-                st.markdown(msg["content"])
-        elif msg["role"] == "assistant":
-            with st.chat_message("assistant"):
-                st.markdown(msg["content"])
-
-    if question := st.chat_input("Ask your question about drugs or products:"):
+    if question := st.chat_input("Message MediScope:"):
         st.session_state.messages.append({"role": "user", "content": question})
         with st.chat_message("user"):
             st.markdown(question)
 
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
-            response = complete(question)
-            message_placeholder.markdown(response)
+    
+            question = question.replace("'","")
+    
+            with st.spinner(f"{st.session_state.model_name} thinking..."):
+                response= complete(question)            
+                response = response.replace("'", "")
+                message_placeholder.markdown(response)
 
         st.session_state.messages.append({"role": "assistant", "content": response})
+
 
 if __name__ == "__main__":
     main()
