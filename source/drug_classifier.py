@@ -87,21 +87,24 @@ Categories:
 For the keyword provided, categorize it into its corresponding category and return the result in the following JSON format:
 
 {
-    "category": "<category>",
+    "category": "<category>"
+    
 }
+Medicine:
 
 """
 
     query = session.sql(f"""
         SELECT TRIM(SNOWFLAKE.CORTEX.COMPLETE(
-            'mistral-7B',
-            '{prompt} {medicine_name}'
+            'mistral-large',
+            $${prompt} {medicine_name}$$
         ), '\\n') AS category
     """)
+    #pdb.set_trace()
     result = query.collect()
 
     if result:
-        # pdb.set_trace()
+        #pdb.set_trace()
         category_json_str = result[0]["CATEGORY"]
         
         try:

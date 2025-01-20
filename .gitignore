@@ -1,3 +1,5 @@
 source/__pycache__/
 output_pdf/
 .env
+.venv
+.idea

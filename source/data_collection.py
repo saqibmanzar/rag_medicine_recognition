@@ -165,7 +165,7 @@ class DataCollection:
         
         if "Drug and Medication Information" in details:
             # Apply chunking to the details text here
-            # pdb.set_trace()
+            #pdb.set_trace()
             chunked_details = self.apply_chunking(details)
             return chunked_details
         return None
@@ -230,7 +230,7 @@ class DataCollection:
                 print(f"\nProcessing batch {batch_num}/{total_batches}...")
                 processed_drugs = []
 
-                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                     future_to_id = {executor.submit(self.drug_download, drug_id): drug_id for drug_id in batch}
                     
                     for future in concurrent.futures.as_completed(future_to_id):
@@ -262,4 +262,4 @@ class DataCollection:
 
 if __name__ == "__main__":
     obj = DataCollection()
-    obj.start_process(drug_id_start=1, drug_id_limit=500)
+    obj.start_process(drug_id_start=501, drug_id_limit=10000)
