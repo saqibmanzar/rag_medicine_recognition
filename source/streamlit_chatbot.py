@@ -33,6 +33,7 @@ def create_snowpark_session():
         st.error(f"Failed to create Snowpark session: {e}")
         raise
 
+print("account: ", SNOWFLAKE_ACCOUNT)
 session = create_snowpark_session()
 
 CORTEX_SEARCH_DATABASE = SNOWFLAKE_DATABASE
