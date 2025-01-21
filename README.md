@@ -49,7 +49,7 @@ One late night, I was unwell and couldn't stop vomiting. Unable to visit a pharm
 ---
 
 ## 📖 What We Learned  
-- Advanced tech like **Snowflake Cortex**, **Mistral LLMs**, and **TruLens**.  
+- Advanced tech like **Snowflake Cortex**, **Mistral LLMs**.  
 - Teamwork, perseverance, and self-belief.  
 - The importance of user-centric design in solving real-world problems.  
 
