@@ -1,7 +1,6 @@
 import snowflake.snowpark as snowpark
 import streamlit as st
 import os
-from snowflake.core import Root
 import pandas as pd
 import pdb
 from dotenv import load_dotenv
@@ -35,12 +34,12 @@ def create_snowpark_session():
         raise
 
 session = create_snowpark_session()
-root = Root(session)
 
 CORTEX_SEARCH_DATABASE = SNOWFLAKE_DATABASE
 CORTEX_SEARCH_SCHEMA = SNOWFLAKE_SCHEMA
 CORTEX_SEARCH_SERVICE = "drug_data_search_service" 
-svc = root.databases[CORTEX_SEARCH_DATABASE].schemas[CORTEX_SEARCH_SCHEMA].cortex_search_services[CORTEX_SEARCH_SERVICE]
+svc = session.sql(f"SELECT * FROM {CORTEX_SEARCH_DATABASE}.{CORTEX_SEARCH_SCHEMA}.drug_data_search_service")
+
 
 COLUMNS = [
     "chunk",
