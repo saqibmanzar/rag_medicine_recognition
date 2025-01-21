@@ -3,4 +3,4 @@ output_pdf/
 .env
 .venv
 .idea
-*.toml
+.streamlit/secrets.toml
