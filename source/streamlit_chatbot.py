@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import pdb
 from dotenv import load_dotenv
+from snowflake.core import Root
 
 load_dotenv()
 pd.set_option("max_colwidth", None)
@@ -41,11 +42,12 @@ def create_snowpark_session():
         raise
 
 session = create_snowpark_session()
+root = Root(session)
 
 CORTEX_SEARCH_DATABASE = SNOWFLAKE_DATABASE
 CORTEX_SEARCH_SCHEMA = SNOWFLAKE_SCHEMA
 CORTEX_SEARCH_SERVICE = "drug_data_search_service" 
-svc = session.sql(f"SELECT * FROM {CORTEX_SEARCH_DATABASE}.{CORTEX_SEARCH_SCHEMA}.drug_data_search_service")
+svc = root.databases[CORTEX_SEARCH_DATABASE].schemas[CORTEX_SEARCH_SCHEMA].cortex_search_services[CORTEX_SEARCH_SERVICE]
 
 
 COLUMNS = [
