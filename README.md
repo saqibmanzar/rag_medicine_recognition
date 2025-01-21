@@ -75,8 +75,9 @@ One late night, I was unwell and couldn't stop vomiting. Unable to visit a pharm
 ├── source/
 │   ├── streamlit_chatbot.py      # Main Streamlit app
 │   ├── data_collection.py        # Script for data collection and preprocessing
-│   ├── classification.py         # Script for classification with Mistral
-│   ├── trulens_integration.py    # Evaluation with TruLens
+│   ├── drug_classifier.py        # Script for classification with Mistral
+│   ├── initiate_cortex.py        # to turn on the cortex search service
+│   ├── disable_cortex.py         # to turn off the cortex search service
 ├── README.md                     # Project documentation
 ├── requirements.txt              # Required libraries
 └── .env                          # Snowflake and API credentials
