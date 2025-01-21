@@ -17,6 +17,8 @@ slide_window = 7
 # SNOWFLAKE_DATABASE = os.getenv('SNOWFLAKE_DATABASE')
 # SNOWFLAKE_SCHEMA = os.getenv('SNOWFLAKE_SCHEMA')
 # SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE")
+print("account: ", st.secrets)
+
 
 SNOWFLAKE_USER = st.secrets["SNOWFLAKE_USER"]
 SNOWFLAKE_PASSWORD = st.secrets["SNOWFLAKE_PASSWORD"]
@@ -40,7 +42,6 @@ def create_snowpark_session():
         st.error(f"Failed to create Snowpark session: {e}")
         raise
 
-print("account: ", SNOWFLAKE_ACCOUNT)
 session = create_snowpark_session()
 
 CORTEX_SEARCH_DATABASE = SNOWFLAKE_DATABASE
