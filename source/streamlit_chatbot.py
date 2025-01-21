@@ -11,20 +11,19 @@ pd.set_option("max_colwidth", None)
 NUM_CHUNKS = 3  
 slide_window = 7
 
-SNOWFLAKE_USER = os.getenv('SNOWFLAKE_USER')
-SNOWFLAKE_PASSWORD = os.getenv('SNOWFLAKE_PASSWORD')
-SNOWFLAKE_ACCOUNT = os.getenv('SNOWFLAKE_ACCOUNT')
-SNOWFLAKE_DATABASE = os.getenv('SNOWFLAKE_DATABASE')
-SNOWFLAKE_SCHEMA = os.getenv('SNOWFLAKE_SCHEMA')
-SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE")
-# print("account: ", st.secrets)
+# SNOWFLAKE_USER = os.getenv('SNOWFLAKE_USER')
+# SNOWFLAKE_PASSWORD = os.getenv('SNOWFLAKE_PASSWORD')
+# SNOWFLAKE_ACCOUNT = os.getenv('SNOWFLAKE_ACCOUNT')
+# SNOWFLAKE_DATABASE = os.getenv('SNOWFLAKE_DATABASE')
+# SNOWFLAKE_SCHEMA = os.getenv('SNOWFLAKE_SCHEMA')
+# SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE")
 
-# SNOWFLAKE_USER = st.secrets["SNOWFLAKE_USER"]
-# SNOWFLAKE_PASSWORD = st.secrets["SNOWFLAKE_PASSWORD"]
-# SNOWFLAKE_ACCOUNT = st.secrets["SNOWFLAKE_ACCOUNT"]
-# SNOWFLAKE_DATABASE = st.secrets["SNOWFLAKE_DATABASE"]
-# SNOWFLAKE_SCHEMA = st.secrets["SNOWFLAKE_SCHEMA"]
-# SNOWFLAKE_WAREHOUSE = st.secrets["SNOWFLAKE_WAREHOUSE"]
+SNOWFLAKE_USER = st.secrets["SNOWFLAKE_USER"]
+SNOWFLAKE_PASSWORD = st.secrets["SNOWFLAKE_PASSWORD"]
+SNOWFLAKE_ACCOUNT = st.secrets["SNOWFLAKE_ACCOUNT"]
+SNOWFLAKE_DATABASE = st.secrets["SNOWFLAKE_DATABASE"]
+SNOWFLAKE_SCHEMA = st.secrets["SNOWFLAKE_SCHEMA"]
+SNOWFLAKE_WAREHOUSE = st.secrets["SNOWFLAKE_WAREHOUSE"]
 
 def create_snowpark_session():
     try:
@@ -67,6 +66,7 @@ def config_options():
 
     st.sidebar.selectbox('Select the drug category:', cat_list, key="category_value")
     st.sidebar.checkbox('Do you want that I remember the chat history?', key="use_chat_history", value = True)
+    st.sidebar.checkbox('Debug: Click to see summary generated of previous conversation', key="debug", value=True)
     st.sidebar.button("Start Over", key="clear_conversation", on_click=init_messages)
     st.sidebar.expander("Session State").write(st.session_state)
 
