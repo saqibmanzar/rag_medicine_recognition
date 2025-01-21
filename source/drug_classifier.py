@@ -96,7 +96,7 @@ Medicine:
 
     query = session.sql(f"""
         SELECT TRIM(SNOWFLAKE.CORTEX.COMPLETE(
-            'mistral-large',
+            'mistral-large2',
             $${prompt} {medicine_name}$$
         ), '\\n') AS category
     """)
